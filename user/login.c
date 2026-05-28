@@ -2,21 +2,7 @@
 #include "kernel/stat.h"
 #include "kernel/fcntl.h"
 #include "user/user.h"
-
-unsigned long djb2_hash(char *str) {
-    unsigned long hash = 5381;
-    int c; while ((c = *str++)) { hash = ((hash << 5) + hash) + c; }
-    return hash;
-}
-
-void itoa(int n, char* buf) {
-    int i = 0, sign = n;
-    if (sign < 0) n = -n;
-    do { buf[i++] = n % 10 + '0'; } while ((n /= 10) > 0);
-    if (sign < 0) buf[i++] = '-';
-    buf[i] = '\0';
-    for (int j = 0, k = i - 1; j < k; j++, k--) { char temp = buf[j]; buf[j] = buf[k]; buf[k] = temp; }
-}
+#include "seclib.h"
 
 // HAM GHI NHAT KY
 void write_log(char *username, char *status) {
@@ -67,11 +53,6 @@ int check_auth(char *user, char *pass) {
     return 0;
 }
 
-void safe_gets(char *buf, int max) {
-    gets(buf, max);
-    int len = strlen(buf);
-    if(len > 0 && buf[len-1] == '\n') buf[len-1] = '\0';
-}
 
 int main(int argc, char *argv[]) {
     char user[32], pass[32]; int attempts = 0; 

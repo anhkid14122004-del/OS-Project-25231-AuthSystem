@@ -23,6 +23,8 @@ main(void)
   dup(0);  // stdout
   dup(0);  // stderr
 
+  unlink("users.lock");
+  unlink(".current_user");
   for(;;){
     printf("init: starting login system... \n");
     pid = fork();

@@ -2,25 +2,7 @@
 #include "kernel/stat.h"
 #include "kernel/fcntl.h"
 #include "user/user.h"
-
-// Ham ho tro chuyen so thanh chuoi
-void itoa(int n, char* buf) {
-    int i = 0, sign = n;
-    if (sign < 0) n = -n;
-    do { buf[i++] = n % 10 + '0'; } while ((n /= 10) > 0);
-    if (sign < 0) buf[i++] = '-';
-    buf[i] = '\0';
-    for (int j = 0, k = i - 1; j < k; j++, k--) {
-        char temp = buf[j]; buf[j] = buf[k]; buf[k] = temp;
-    }
-}
-
-// Ham xoa ky tu thua khi nhap
-void safe_gets(char *buf, int max) {
-    gets(buf, max);
-    int len = strlen(buf);
-    if(len > 0 && buf[len-1] == '\n') buf[len-1] = '\0';
-}
+#include "seclib.h"
 
 // Ham ghi log danh rieng cho viec xoa user
 void write_log(char *target, char *status) {
@@ -45,7 +27,8 @@ void write_log(char *target, char *status) {
 
 int main(int argc, char *argv[]) {
     // 1. KIEM TRA QUYEN ADMIN
-    int fd_session = open(".current_user", O_RDONLY);
+// 1. KIEM TRA QUYEN ADMIN
+    int fd_session = open(".current_user", 0); // 0 = O_RDONLY
     if(fd_session < 0) {
         printf("Loi: Ban phai dang nhap de su dung lenh nay!\n");
         exit(1);
@@ -54,7 +37,17 @@ int main(int argc, char *argv[]) {
     char current_user[32];
     int n = read(fd_session, current_user, sizeof(current_user)-1);
     close(fd_session);
-    current_user[n] = '\0';
+    
+    if(n > 0) {
+        current_user[n] = '\0';
+        // BƯỚC QUAN TRỌNG: Lọc bỏ ký tự xuống dòng bị thừa
+        for(int i = 0; i < n; i++) {
+            if(current_user[i] == '\n' || current_user[i] == '\r') {
+                current_user[i] = '\0';
+                break;
+            }
+        }
+    }
 
     if(strcmp(current_user, "admin") != 0) {
         printf("TU CHOI TRUY CAP: Chi co 'admin' moi duoc xoa tai khoan!\n");
@@ -69,6 +62,7 @@ int main(int argc, char *argv[]) {
     if (strlen(target_user) == 0) exit(0);
 
     // Bao ve tai khoan root
+
     if(strcmp(target_user, "admin") == 0) {
         printf("Loi: Khong the xoa tai khoan goc (admin)!\n");
         exit(1);
