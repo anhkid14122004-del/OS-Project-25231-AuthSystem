@@ -4,6 +4,28 @@
 #include "user/user.h"
 #include "seclib.h"
 
+// HAM GHI NHAT KY CHO LENH REGISTER
+void write_log(char *target, char *status) {
+    int time_tick = uptime(); 
+    char time_str[16];
+    itoa(time_tick, time_str);
+
+    char log_msg[128];
+    strcpy(log_msg, "[Tick: "); strcpy(log_msg + strlen(log_msg), time_str);
+    // Đổi chữ "Delete" thành "Create"
+    strcpy(log_msg + strlen(log_msg), "] Admin action: Create user '"); strcpy(log_msg + strlen(log_msg), target);
+    strcpy(log_msg + strlen(log_msg), "' - "); strcpy(log_msg + strlen(log_msg), status);
+    strcpy(log_msg + strlen(log_msg), "\n");
+
+    int fd = open("auth.log", O_CREATE | O_RDWR);
+    if (fd >= 0) {
+        char temp;
+        while(read(fd, &temp, 1) > 0); // Tua den cuoi file
+        write(fd, log_msg, strlen(log_msg));
+        close(fd);
+    }
+}
+
 int main(int argc, char *argv[]) {
     // 1. CHỐT CHẶN PHÂN QUYỀN (RBAC)
     int fd_session = open(".current_user", O_RDONLY);
@@ -79,12 +101,11 @@ int main(int argc, char *argv[]) {
     volatile int delay2;
     for(delay2 = 0; delay2 < 700000000; delay2++); 
 
-// =========================================================
+    // =========================================================
     // 4. THỰC THI TRONG VÙNG GĂNG (KIỂM TRA TRÙNG & GHI FILE)
     // =========================================================
     int fd = open("users.dat", O_RDWR | O_CREATE);
     if(fd >= 0) {
-        // --- SỰ THAY ĐỔI BẮT ĐẦU TỪ ĐÂY ---
         char buf[1024];
         int n = read(fd, buf, sizeof(buf)); // Đọc toàn bộ CSDL vào buffer
         buf[n] = '\0';
@@ -121,11 +142,14 @@ int main(int argc, char *argv[]) {
         // Xử lý nếu phát hiện trùng lặp
         if (is_duplicate) {
             printf("\n-> Loi: Tai khoan '%s' da ton tai tren he thong!\n", input_user);
+            
+            // GOI HAM GHI LOG THAT BAI TAI DAY
+            write_log(input_user, "FAILED (DUPLICATE)");
+            
             close(fd);
             unlink("users.lock"); // BẮT BUỘC NHẢ KHÓA TRƯỚC KHI THOÁT
             exit(1);
         }
-        // --- SỰ THAY ĐỔI KẾT THÚC TẠI ĐÂY ---
 
         // Nếu không trùng, tiến hành ghi (con trỏ file đã ở sẵn cuối do hàm read)
         write(fd, input_user, strlen(input_user));
@@ -134,9 +158,14 @@ int main(int argc, char *argv[]) {
         write(fd, "\n", 1);
         close(fd);
         printf("\n-> Dang ky thanh cong! (Da luu vao users.dat)\n");
+        
+        // GOI HAM GHI LOG THANH CONG TAI DAY
+        write_log(input_user, "SUCCESS");
+        
     } else {
         printf("\n-> Loi: Khong the mo CSDL!\n");
     }
+    
     // 5. GIẢI PHÓNG TÀI NGUYÊN (RELEASE)
     unlink("users.lock");
     printf("[DEBUG] Da nha khoa Mutex an toan.\n");
